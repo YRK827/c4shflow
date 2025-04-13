@@ -1,0 +1,192 @@
+<%~ layout('layout.eta', { title: '예산 설정' }) %>
+<div class="p-4">
+  <h2 class="text-lg font-semibold mb-6 text-center">월별 예산 설정</h2>
+  
+  <div class="space-y-4 max-w-md mx-auto">
+    <!-- 연도 선택 -->
+    <div>
+      <label for="year" class="block text-sm font-medium text-gray-700">연도</label>
+      <select id="year" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        <!-- JavaScript로 동적 생성 -->
+      </select>
+    </div>
+    
+    <!-- 월 선택 -->
+    <div>
+      <label for="month" class="block text-sm font-medium text-gray-700">월</label>
+      <select id="month" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        <option value="1">1월</option>
+        <option value="2">2월</option>
+        <option value="3">3월</option>
+        <option value="4">4월</option>
+        <option value="5">5월</option>
+        <option value="6">6월</option>
+        <option value="7">7월</option>
+        <option value="8">8월</option>
+        <option value="9">9월</option>
+        <option value="10">10월</option>
+        <option value="11">11월</option>
+        <option value="12">12월</option>
+      </select>
+    </div>
+    
+    <!-- 현재 해당 월 지출 정보 -->
+    <div id="monthlyExpenseInfo" class="bg-gray-50 p-3 rounded-md text-sm">
+      <p>선택한 달의 현재 지출: <span id="currentExpense">₩0</span></p>
+    </div>
+    
+    <!-- 예산 금액 입력 -->
+    <div>
+      <label for="budgetAmount" class="block text-sm font-medium text-gray-700">예산 금액</label>
+      <div class="mt-1 relative rounded-md shadow-sm">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <span class="text-gray-500 sm:text-sm">₩</span>
+        </div>
+        <input type="number" id="budgetAmount" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-12 sm:text-sm border-gray-300 rounded-md p-2 border" placeholder="예산 금액 입력" required>
+      </div>
+    </div>
+    
+    <!-- 현재 예산 정보 -->
+    <div id="currentBudgetInfo" class="bg-blue-50 p-3 rounded-md text-sm hidden">
+      <p>현재 설정된 예산: <span id="currentBudget">₩0</span></p>
+    </div>
+  </div>
+  
+  <!-- 버튼 영역 -->
+  <div class="fixed bottom-6 left-0 right-0 flex justify-center space-x-4">
+    <!-- 예산 삭제 버튼 추가 -->
+    <button id="btnDeleteBudget" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hidden">
+      삭제
+    </button>
+    
+    <!-- 저장 버튼 -->
+    <button id="btnSaveBudget" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-12 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+      저장
+    </button>
+  </div>
+</div>
+
+<script>
+  // 연도 옵션 생성
+  function populateYearOptions() {
+    const yearSelect = document.getElementById('year');
+    const currentYear = new Date().getFullYear();
+    
+    // 현재 연도 전후 3년까지 선택 가능하도록 설정
+    for (let i = currentYear - 1; i <= currentYear + 1; i++) {
+      const option = document.createElement('option');
+      option.value = i;
+      option.textContent = i + '년';
+      if (i === currentYear) {
+        option.selected = true;
+      }
+      yearSelect.appendChild(option);
+    }
+  }
+  
+  // 현재 월 선택
+  function setCurrentMonth() {
+    const currentMonth = new Date().getMonth() + 1; // 0-based to 1-based
+    document.getElementById('month').value = currentMonth;
+  }
+  
+  // 선택한 연/월의 예산 정보 업데이트
+  function updateBudgetInfo() {
+    const year = parseInt(document.getElementById('year').value);
+    const month = parseInt(document.getElementById('month').value);
+    
+    // 선택한 연/월의 예산 상태 가져오기
+    const budgetStatus = CashflowApp.getBudgetStatus(year, month);
+    
+    // 현재 지출 정보 업데이트
+    document.getElementById('currentExpense').textContent = CashflowApp.formatCurrency(budgetStatus.spent);
+    
+    // 현재 예산 정보 업데이트
+    if (budgetStatus.exists) {
+      document.getElementById('currentBudget').textContent = CashflowApp.formatCurrency(budgetStatus.budget);
+      document.getElementById('currentBudgetInfo').classList.remove('hidden');
+      document.getElementById('budgetAmount').value = budgetStatus.budget;
+      // 예산이 있을 때만 삭제 버튼 표시
+      document.getElementById('btnDeleteBudget').classList.remove('hidden');
+    } else {
+      document.getElementById('currentBudgetInfo').classList.add('hidden');
+      document.getElementById('budgetAmount').value = '';
+      // 예산이 없으면 삭제 버튼 숨김
+      document.getElementById('btnDeleteBudget').classList.add('hidden');
+    }
+  }
+  
+  // 예산 저장 기능
+  function saveBudget() {
+    const year = parseInt(document.getElementById('year').value);
+    const month = parseInt(document.getElementById('month').value);
+    const amount = parseFloat(document.getElementById('budgetAmount').value);
+    
+    if (!amount || amount <= 0) {
+      alert('올바른 예산 금액을 입력해주세요.');
+      return;
+    }
+    
+    // 예산 저장
+    CashflowApp.setBudget(year, month, amount);
+    
+    // 예산 정보 업데이트
+    updateBudgetInfo();
+    
+    // 피드백
+    alert(`${year}년 ${month}월 예산이 설정되었습니다.`);
+    
+    // 저장 후 로비 페이지로 이동
+    window.location.href = '/';
+  }
+  
+  // 예산 삭제 기능 추가
+  function deleteBudget() {
+    const year = parseInt(document.getElementById('year').value);
+    const month = parseInt(document.getElementById('month').value);
+    
+    if (confirm(`${year}년 ${month}월 예산을 삭제하시겠습니까?`)) {
+      const result = CashflowApp.deleteBudget(year, month);
+      
+      if (result) {
+        // 예산 정보 업데이트
+        updateBudgetInfo();
+        
+        // 피드백
+        alert(`${year}년 ${month}월 예산이 삭제되었습니다.`);
+        
+        // 로비 페이지로 이동
+        window.location.href = '/';
+      } else {
+        alert('예산 삭제에 실패했습니다.');
+      }
+    }
+  }
+  
+  // 연/월 변경 이벤트 핸들러
+  function handleDateChange() {
+    updateBudgetInfo();
+  }
+  
+  // 페이지 로드 시 초기화
+  document.addEventListener('DOMContentLoaded', () => {
+    // 연도 옵션 생성
+    populateYearOptions();
+    
+    // 현재 월 선택
+    setCurrentMonth();
+    
+    // 초기 예산 정보 업데이트
+    updateBudgetInfo();
+    
+    // 연/월 변경 이벤트 리스너
+    document.getElementById('year').addEventListener('change', handleDateChange);
+    document.getElementById('month').addEventListener('change', handleDateChange);
+    
+    // 저장 버튼 이벤트 리스너
+    document.getElementById('btnSaveBudget').addEventListener('click', saveBudget);
+    
+    // 삭제 버튼 이벤트 리스너 추가
+    document.getElementById('btnDeleteBudget').addEventListener('click', deleteBudget);
+  });
+</script>

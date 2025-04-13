@@ -52,6 +52,27 @@ web_modules/
 .npm
 
 # Optional eslint cache
+
+# macOS specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Local development SSL certificates
+localhost.pem
+localhost.key
 .eslintcache
 
 # Optional stylelint cache

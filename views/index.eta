@@ -1,0 +1,403 @@
+<% layout('layout', { title: 'Cashflow' }) %>
+<div class="p-4">
+  <!-- Date Display Area -->
+  <div class="mb-4 text-center">
+    <h2 id="currentDateDisplay" class="text-xl font-bold">2023-12</h2>
+  </div>
+  
+  <!-- Period Filter Buttons -->
+  <div class="flex justify-center mb-4 space-x-2">
+    <button id="btnDaily" class="px-4 py-2 rounded-full border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white">Daily</button>
+    <button id="btnMonthly" class="px-4 py-2 rounded-full bg-blue-500 text-white">Monthly</button>
+    <button id="btnYearly" class="px-4 py-2 rounded-full border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white">Yearly</button>
+  </div>
+  
+  <!-- Budget Card (NEW) -->
+  <div id="budgetCard" class="bg-white p-4 rounded-lg shadow-sm mb-4 cursor-pointer">
+    <div class="flex justify-between items-center mb-1">
+      <h3 class="text-sm text-gray-500">Budget</h3>
+      <span id="budgetMonth" class="text-xs text-gray-500">2023년 12월</span>
+    </div>
+    <p id="budgetAmount" class="text-blue-600 font-bold text-lg">₩0</p>
+    <div id="budgetStatus" class="mt-1 text-sm">
+      <span id="budgetStatusType" class="font-medium">Left:</span>
+      <span id="budgetStatusAmount" class="font-medium">₩0</span>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+      <h3 class="text-sm text-gray-500 mb-1">수입</h3>
+      <p id="totalIncome" class="text-green-600 font-bold text-lg">₩0</p>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+      <h3 class="text-sm text-gray-500 mb-1">지출</h3>
+      <p id="totalExpense" class="text-red-600 font-bold text-lg">₩0</p>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+      <h3 class="text-sm text-gray-500 mb-1">잔액</h3>
+      <p id="balance" class="text-blue-600 font-bold text-lg">₩0</p>
+    </div>
+  </div>
+
+  <!-- Transaction List -->
+  <h2 class="text-lg font-semibold mb-4">최근 거래내역</h2>
+  <div id="transactionList" class="space-y-3">
+    <!-- Transactions will be inserted here dynamically -->
+    <div class="text-center text-gray-500 py-10 empty-message">거래 내역이 없습니다.</div>
+  </div>
+  
+  <!-- Developer Tools -->
+  <div class="mt-8 border-t pt-4">
+    <h3 class="text-md font-semibold mb-2">개발자 도구</h3>
+    <div class="flex space-x-2">
+      <button id="btnAddDummy" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm">더미 데이터 추가</button>
+      <button id="btnShowLogs" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm">로그 보기</button>
+      <button id="btnClearData" class="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded text-sm">데이터 초기화</button>
+    </div>
+    <!-- Log Display -->
+    <div id="logContainer" class="mt-4 bg-gray-100 p-3 rounded text-xs font-mono max-h-40 overflow-auto hidden">
+      <div id="logList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Current period mode (daily, monthly, yearly)
+  let currentPeriodMode = 'monthly';
+  
+  // Format date for display
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  // Get category name from value
+  function getCategoryName(categoryValue) {
+    const categories = {
+      'salary': '급여',
+      'investment': '투자',
+      'side-income': '부수입',
+      'other-income': '기타 수입',
+      'food': '식비',
+      'transportation': '교통비',
+      'shopping': '쇼핑',
+      'housing': '주거/통신',
+      'entertainment': '문화/여가',
+      'other-expense': '기타 지출'
+    };
+    return categories[categoryValue] || categoryValue;
+  }
+  
+  // Format display date based on current period mode
+  function formatDisplayDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    
+    switch(currentPeriodMode) {
+      case 'daily':
+        return `${year}-${month}-${day}`;
+      case 'monthly':
+        return `${year}-${month}`;
+      case 'yearly':
+        return `${year}`;
+      default:
+        return `${year}-${month}`;
+    }
+  }
+  
+  // Update date display
+  function updateDateDisplay() {
+    document.getElementById('currentDateDisplay').textContent = formatDisplayDate();
+  }
+  
+  // Filter transactions based on current period mode
+  function getFilteredTransactions() {
+    const transactions = CashflowApp.getAllTransactions();
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1; // 0-based to 1-based
+    const currentDay = today.getDate();
+    
+    return transactions.filter(transaction => {
+      const txDate = new Date(transaction.date);
+      const txYear = txDate.getFullYear();
+      const txMonth = txDate.getMonth() + 1; // 0-based to 1-based
+      const txDay = txDate.getDate();
+      
+      switch(currentPeriodMode) {
+        case 'daily':
+          // Filter for today only
+          return txYear === currentYear && txMonth === currentMonth && txDay === currentDay;
+        case 'monthly':
+          // Filter for current month
+          return txYear === currentYear && txMonth === currentMonth;
+        case 'yearly':
+          // Filter for current year
+          return txYear === currentYear;
+        default:
+          return true;
+      }
+    });
+  }
+  
+  // Render transaction list with period filtering
+  function renderTransactions() {
+    const transactions = getFilteredTransactions();
+    const transactionList = document.getElementById('transactionList');
+    
+    // Clear current content
+    transactionList.innerHTML = '';
+    
+    if (transactions.length === 0) {
+      transactionList.innerHTML = '<div class="text-center text-gray-500 py-10 empty-message">거래 내역이 없습니다.</div>';
+      return;
+    }
+    
+    // Sort transactions by date (newest first)
+    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // Create transaction items
+    transactions.forEach(transaction => {
+      const isIncome = transaction.type === 'income';
+      const item = document.createElement('div');
+      item.className = 'bg-white p-3 rounded-lg shadow-sm flex justify-between items-center';
+      item.innerHTML = `
+        <div class="flex-1">
+          <div class="flex items-center">
+            <span class="font-medium">${getCategoryName(transaction.category)}</span>
+            <span class="text-xs text-gray-500 ml-2">${formatDate(transaction.date)}</span>
+          </div>
+          <p class="text-gray-600 text-sm mt-1 truncate">${transaction.memo || '메모 없음'}</p>
+        </div>
+        <div class="text-right">
+          <p class="${isIncome ? 'text-green-600' : 'text-red-600'} font-bold">
+            ${isIncome ? '+' : '-'}${CashflowApp.formatCurrency(transaction.amount)}
+          </p>
+        </div>
+        <button class="ml-3 text-gray-400 hover:text-red-500 delete-btn" data-id="${transaction.id}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      `;
+      
+      transactionList.appendChild(item);
+    });
+    
+    // Add event listeners to delete buttons
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.currentTarget.dataset.id;
+        
+        if (confirm('이 거래를 삭제하시겠습니까?')) {
+          CashflowApp.deleteTransaction(id);
+          renderTransactions();
+          updateSummary();
+          updateBudgetCard();
+        }
+      });
+    });
+  }
+  
+  // Update summary numbers based on period
+  function updateSummary() {
+    const transactions = getFilteredTransactions();
+    
+    const income = transactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    
+    const expense = transactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    
+    const balance = income - expense;
+    
+    document.getElementById('totalIncome').textContent = CashflowApp.formatCurrency(income);
+    document.getElementById('totalExpense').textContent = CashflowApp.formatCurrency(expense);
+    document.getElementById('balance').textContent = CashflowApp.formatCurrency(balance);
+  }
+  
+  // Update period mode
+  function updatePeriodMode(mode) {
+    // Update current mode
+    currentPeriodMode = mode;
+    
+    // Update button styles
+    document.getElementById('btnDaily').className = 
+      mode === 'daily' 
+        ? 'px-4 py-2 rounded-full bg-blue-500 text-white' 
+        : 'px-4 py-2 rounded-full border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white';
+    
+    document.getElementById('btnMonthly').className = 
+      mode === 'monthly' 
+        ? 'px-4 py-2 rounded-full bg-blue-500 text-white' 
+        : 'px-4 py-2 rounded-full border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white';
+    
+    document.getElementById('btnYearly').className = 
+      mode === 'yearly' 
+        ? 'px-4 py-2 rounded-full bg-blue-500 text-white' 
+        : 'px-4 py-2 rounded-full border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white';
+    
+    // Update UI
+    updateDateDisplay();
+    renderTransactions();
+    updateSummary();
+  }
+  
+  // Update Budget Card (NEW)
+  function updateBudgetCard() {
+    const budgetStatus = CashflowApp.getCurrentBudgetStatus();
+    
+    // 월 표시 업데이트
+    const today = new Date();
+    const yearMonth = `${today.getFullYear()}년 ${today.getMonth() + 1}월`;
+    document.getElementById('budgetMonth').textContent = yearMonth;
+    
+    if (budgetStatus.exists) {
+      // 예산 금액 표시
+      document.getElementById('budgetAmount').textContent = CashflowApp.formatCurrency(budgetStatus.budget);
+      
+      // 예산 상태 표시 (Left 또는 Over)
+      const statusType = budgetStatus.isOver ? 'Over:' : 'Left:';
+      const statusColor = budgetStatus.isOver ? 'text-red-600' : 'text-green-600';
+      
+      document.getElementById('budgetStatusType').textContent = statusType;
+      document.getElementById('budgetStatusAmount').textContent = CashflowApp.formatCurrency(budgetStatus.remaining);
+      
+      // 색상 변경
+      document.getElementById('budgetStatusType').className = `font-medium ${statusColor}`;
+      document.getElementById('budgetStatusAmount').className = `font-medium ${statusColor}`;
+    } else {
+      // 예산이 설정되지 않은 경우
+      document.getElementById('budgetAmount').textContent = '설정 필요';
+      document.getElementById('budgetStatusType').textContent = '';
+      document.getElementById('budgetStatusAmount').textContent = '예산을 설정해주세요';
+    }
+  }
+  
+  // Generate dummy data for testing
+  function addDummyData() {
+    // Sample categories
+    const incomeCategories = ['salary', 'investment', 'side-income', 'other-income'];
+    const expenseCategories = ['food', 'transportation', 'shopping', 'housing', 'entertainment', 'other-expense'];
+    
+    // Random transaction helper
+    function createRandomTransaction(type) {
+      const categories = type === 'income' ? incomeCategories : expenseCategories;
+      const today = new Date();
+      const randomDaysAgo = Math.floor(Math.random() * 30);
+      const date = new Date(today);
+      date.setDate(today.getDate() - randomDaysAgo);
+      
+      return {
+        type: type,
+        amount: Math.floor(Math.random() * 50000) + 5000,
+        date: date.toISOString().split('T')[0],
+        category: categories[Math.floor(Math.random() * categories.length)],
+        memo: type === 'income' ? '수입 샘플 데이터' : '지출 샘플 데이터'
+      };
+    }
+    
+    // Add a few random transactions
+    for (let i = 0; i < 3; i++) {
+      CashflowApp.addTransaction(createRandomTransaction('income'));
+    }
+    
+    for (let i = 0; i < 5; i++) {
+      CashflowApp.addTransaction(createRandomTransaction('expense'));
+    }
+    
+    // Refresh the UI
+    renderTransactions();
+    updateSummary();
+  }
+  
+  // Display logs
+  function showLogs() {
+    const logs = CashflowApp.getLogs();
+    const logList = document.getElementById('logList');
+    const logContainer = document.getElementById('logContainer');
+    
+    // Toggle log display
+    if (logContainer.classList.contains('hidden')) {
+      logContainer.classList.remove('hidden');
+      
+      // Clear current logs
+      logList.innerHTML = '';
+      
+      if (logs.length === 0) {
+        logList.innerHTML = '<p>로그가 없습니다.</p>';
+        return;
+      }
+      
+      // Display logs in reverse chronological order
+      logs.slice().reverse().forEach(log => {
+        const logTime = new Date(log.timestamp).toLocaleString();
+        const logItem = document.createElement('div');
+        logItem.className = 'mb-1 pb-1 border-b border-gray-200';
+        logItem.innerHTML = `<span class="text-gray-500">[${logTime}]</span> ${log.action}`;
+        logList.appendChild(logItem);
+      });
+    } else {
+      logContainer.classList.add('hidden');
+    }
+  }
+  
+  // Document ready event
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize date display
+    updateDateDisplay();
+    
+    // Set up period filter buttons
+    document.getElementById('btnDaily').addEventListener('click', () => {
+      updatePeriodMode('daily');
+    });
+    
+    document.getElementById('btnMonthly').addEventListener('click', () => {
+      updatePeriodMode('monthly');
+    });
+    
+    document.getElementById('btnYearly').addEventListener('click', () => {
+      updatePeriodMode('yearly');
+    });
+    
+    // Render initial data
+    renderTransactions();
+    updateSummary();
+    
+    // 예산 카드 초기화 (NEW)
+    updateBudgetCard();
+    
+    // 예산 카드 클릭 이벤트 (NEW)
+    document.getElementById('budgetCard').addEventListener('click', () => {
+      window.location.href = '/budget';
+    });
+    
+    // Set up developer tool buttons
+    document.getElementById('btnAddDummy').addEventListener('click', () => {
+      addDummyData();
+    });
+    
+    document.getElementById('btnShowLogs').addEventListener('click', () => {
+      showLogs();
+    });
+    
+    document.getElementById('btnClearData').addEventListener('click', () => {
+      if (confirm('모든 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        CashflowApp.clearAllData();
+        renderTransactions();
+        updateSummary();
+        updateBudgetCard(); // 예산 카드도 초기화 (NEW)
+        alert('모든 데이터가 초기화되었습니다.');
+      }
+    });
+  });
+</script>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title><%= it.title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- PWA 관련 메타 태그 -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#ffffff"/>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Hello PWA">
+    
+    <!-- 아이콘 -->
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512x512.png">
+    
+    <!-- 스플래시 스크린 이미지 -->
+    <link rel="apple-touch-startup-image" href="/splash-1536x2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)">
+    <link rel="apple-touch-startup-image" href="/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)">
+    <!-- iPhone X (1125px x 2436px) -->
+    <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" href="/splash-1242x2688.png">
+    <!-- iPhone 8, 7, 6s, 6 (750px x 1334px) -->
+    <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="/splash-828x1792.png">
+    <!-- iPad Pro 12.9" (2048px x 2732px) -->
+    <link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)" href="/splash-1536x2048.png">
+    <!-- 웹앱 모드 관련 설정 -->
+    <meta name="apple-touch-fullscreen" content="yes">
+    <script defer src="/js/main.js"></script> <!-- common js -->
+</head>
+<body class="bg-gray-100">
+    <!-- 헤더 -->
+    <header class="fixed top-0 left-0 right-0 bg-white shadow-sm z-10">
+        <div class="flex items-center justify-between px-4 h-14">
+            <button id="btnBack" class="p-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <h1 class="text-lg font-semibold"><%= it.title %></h1>
+            <div class="w-10"><!-- 추후 메뉴 버튼 영역 --></div>
+        </div>
+    </header>
+    <!-- 메인 콘텐츠 -->
+    <main class="pt-14 min-h-screen">
+        <%~ it.body %>
+    </main>
+    <!-- 플로팅 버튼 (로비 페이지에서만 표시) -->
+    <% if (it.title !== '추가' && it.title !== '예산 설정') { %>
+    <button id="btnAdd" class="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+    </button>
+    <% } %>
+</body>
+</html>
+<!--
+1. 지출/수입 기능 구현
+2. 데이터 저장은 Web browser 의 localStorage
+3. 추후 firebase의 firestore와 sync 기능을 염두
+4. offline 기능 염두
++ localStorage 확인하는 방법을 안내 받기
++ create만 시키는 것 만으로도 데이터 추적이 가능하도록 로깅 구현
+-->
+<!-- 더미 데이터 만들어서 read 테스트를 위한 환경 조성 -->
+<!--
+read
+list, top bar ...
+-->
