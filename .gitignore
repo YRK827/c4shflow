@@ -155,3 +155,27 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Firebase specific
+.firebase/
+firebase-debug.log
+firebaserc
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+
+# Local development files
+*.local
+
+# DataConnect generated files
+dataconnect-generated/
+**/dataconnect-generated/
+# Keep the directory structure but ignore content
+!dataconnect-generated/.gitkeep
+
+# Build artifacts
+public/js/bundle*.js
+public/js/*.map
+
+# Service worker
+sw.js.map
